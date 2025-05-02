@@ -1,0 +1,80 @@
+name: Build OnePlus-Sm8150-Kernel-LOS22.2
+on:
+  push:
+    branches:
+      - lineage-22.2
+  pull_request:
+      branches:
+      - lineage-22.2
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
+      CCACHE_NOHASHDIR: "true"
+      CCACHE_MAXSIZE: "2G"
+      CCACHE_HARDLINK: "true"
+    steps:
+    - name: Set up ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+    - name: Remove unnecessary files
+      run: |
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+    - name: Install dependencies
+      run: |
+        sudo apt-get update -y 
+        sudo apt install gcc-aarch64-linux-gnu -y
+        sudo apt install gcc-arm-linux-gnueabi -y
+        sudo apt install clang-14 -y
+        sudo apt install binutils make python3 libssl-dev build-essential bc  bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs -y
+        git clone https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64 --depth=1
+        git clone https://gitlab.com/itsshashanksp/android_prebuilts_clang_host_linux-x86_clang-r536225 -b 14 clang --depth=1
+        git clone https://github.com/snowwolf725/AnyKernel3 -b oneplus7 --depth=1
+        rm -rf AnyKernel3/.git
+        
+    - name: Setup LOS 22.2
+      run: |
+       export KERNEL_DEFCONFIG="lineage_sm8150_defconfig"
+       export KERNEL_CMDLINE="ARCH=arm64 CLANG_TRIPLE=aarch64-linux-gnu- CROSS_COMPILE=aarch64-linux-androidkernel- CROSS_COMPILE_ARM32=arm-linux-gnueabi- LLVM=1 LLVM_IAS=1 CONFIG_BUILD_ARM64_DT_OVERLAY=n O=out"
+       export PATH=$(pwd)/clang/bin/:$(pwd)/aarch64/bin/:$PATH
+       export ARCH=arm64
+       export SUBARCH=arm64
+       export LD=ld.lld
+       export BRAND_SHOW_FLAG=oneplus
+       export TARGET_PRODUCT=msmnile
+       cd kernel
+       git config --global user.email "luistremendous@gmail.con"
+       git config --global user.name "lu1iss"
+       make $KERNEL_CMDLINE CC="ccache clang" $KERNEL_DEFCONFIG
+       make $KERNEL_CMDLINE CC="ccache clang" -j$(nproc --all)
+       cp out/arch/arm64/boot/Image ../AnyKernel3
+       cd ..
+    - name: Create AK3 zip for android 15
+      run: |
+       cd AnyKernel3
+       zip -r ../Guacamole-kernel-LOS22.2.zip *
+       cd ..
+    - name: Upload Kernel-SU 14
+      uses: actions/upload-artifact@v4
+      with:
+        name: Guacamole-kernel-LOS22.2
+        path: "AnyKernel3/*"
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+         Guacamole-kernel-LOS22.2.zip
+        name: Guacamole-kernel-LOS22.2-${{ steps.get_version.outputs.VERSION }}
+        tag_name: ${{ steps.get_version.outputs.VERSION }}
+        body: |
+          Device: Oneplus 7 Pro
+          Target: LOS22.2
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
