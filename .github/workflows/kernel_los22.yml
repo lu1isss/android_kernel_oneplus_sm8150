@@ -34,6 +34,7 @@ jobs:
         sudo apt install clang-19 -y
         sudo apt install binutils make python3 libssl-dev build-essential bc  bison flex unzip libssl-dev ca-certificates xz-utils mkbootimg cpio device-tree-compiler git git-lfs -y
         git clone https://github.com/LineageOS/android_prebuilts_gcc_linux-x86_aarch64_aarch64-linux-android-4.9 aarch64 --depth=1
+        git clone https://github.com/lu1isss/android_kernel_oneplus_sm8150 -b lineage-22.2 --depth=1 kernel
         git clone https://gitlab.com/itsshashanksp/android_prebuilts_clang_host_linux-x86_clang-r536225 -b 14.0 clang --depth=1
         git clone https://github.com/snowwolf725/AnyKernel3 -b oneplus7 --depth=1
         rm -rf AnyKernel3/.git
@@ -60,7 +61,7 @@ jobs:
        cd AnyKernel3
        zip -r ../Guacamole-kernel-LOS22.2.zip *
        cd ..
-    - name: Upload Kernel-SU 14
+    - name: Upload Kernel
       uses: actions/upload-artifact@v4
       with:
         name: Guacamole-kernel-LOS22.2
